@@ -1,4 +1,5 @@
 # image-segmentation
+This code repository aims to establish a reproducible machine learning framework for automated classification of Alzheimer's Disease (AD) using Random Forest (RF) and Support Vector Machine (SVM) algorithms.
 
 # Prepare data
 
