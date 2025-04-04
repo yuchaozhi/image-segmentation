@@ -1,0 +1,107 @@
+import os
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+from skimage.metrics import structural_similarity as ssim  # SSIM
+from PIL import Image
+
+plt.rcParams["font.sans-serif"] = ["SimHei"]  # 设置中文显示
+plt.rcParams["axes.unicode_minus"] = False  # 解决负号显示问题
+
+# 数据集路径（请替换为你的数据路径）
+dataset_path = "AD/Alzheimer_MRI_4_classes_dataset"
+categories = ["MildDemented", "ModerateDemented", "NonDemented", "VeryMildDemented"]
+
+# 存储统计数据
+brightness_values = {cat: [] for cat in categories}  # 亮度
+contrast_values = {cat: [] for cat in categories}  # 对比度
+sharpness_values = {cat: [] for cat in categories}  # 清晰度
+color_means = {cat: [] for cat in categories}  # 颜色均值
+color_stds = {cat: [] for cat in categories}  # 颜色标准差
+color_histograms = {cat: {"R": [], "G": [], "B": []} for cat in categories}  # 颜色直方图
+
+# 遍历所有类别
+for category in categories:
+    category_path = os.path.join(dataset_path, category)
+    
+    for filename in os.listdir(category_path):
+        img_path = os.path.join(category_path, filename)
+
+        try:
+            # 读取图像（OpenCV 以 BGR 方式加载）
+            img = cv2.imread(img_path)
+            if img is None:
+                continue  # 跳过无法加载的图片
+
+            # 转换为灰度图
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+            # 1️⃣ 计算平均亮度（灰度均值）
+            mean_brightness = np.mean(gray)
+            brightness_values[category].append(mean_brightness)
+
+            # 2️⃣ 计算对比度（灰度标准差）
+            contrast = np.std(gray)
+            contrast_values[category].append(contrast)
+
+            # 3️⃣ 计算图像清晰度（Laplacian 变换）
+            laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+            sharpness_values[category].append(laplacian_var)
+
+            # 4️⃣ 计算颜色均值 & 颜色标准差
+            mean_colors = np.mean(img, axis=(0, 1))  # (B, G, R)
+            std_colors = np.std(img, axis=(0, 1))  # (B, G, R)
+            color_means[category].append(mean_colors)
+            color_stds[category].append(std_colors)
+
+            # 5️⃣ 计算颜色直方图
+            for i, color in enumerate(["B", "G", "R"]):
+                hist = cv2.calcHist([img], [i], None, [256], [0, 256])
+                hist = hist / hist.sum()  # 归一化直方图
+                color_histograms[category][color].append(hist)
+
+        except Exception as e:
+            print(f"无法处理 {img_path}: {e}")
+
+# 统计并输出每个类别的亮度 & 对比度信息
+for category in categories:
+    if brightness_values[category]:
+        avg_brightness = np.mean(brightness_values[category])
+        avg_contrast = np.mean(contrast_values[category])
+        avg_sharpness = np.mean(sharpness_values[category])
+        avg_color_mean = np.mean(color_means[category], axis=0)
+        avg_color_std = np.mean(color_stds[category], axis=0)
+
+        print(f"类别 {category}:")
+        print(f"  平均亮度: {avg_brightness:.2f}")
+        print(f"  平均对比度: {avg_contrast:.2f}")
+        print(f"  平均清晰度（Laplacian 方差）: {avg_sharpness:.2f}")
+        print(f"  颜色均值 (B, G, R): {avg_color_mean}")
+        print(f"  颜色标准差 (B, G, R): {avg_color_std}")
+
+# 可视化清晰度分布
+plt.figure(figsize=(10, 5))
+for category in categories:
+    plt.hist(sharpness_values[category], bins=30, alpha=0.5, label=category)
+plt.xlabel("Laplacian 变换方差（清晰度）")
+plt.ylabel("图像数量")
+plt.title("不同类别的清晰度分布")
+plt.legend()
+plt.show()
+
+# 绘制颜色直方图
+plt.figure(figsize=(12, 6))
+for category in categories:
+    avg_hist_R = np.mean(color_histograms[category]["R"], axis=0)
+    avg_hist_G = np.mean(color_histograms[category]["G"], axis=0)
+    avg_hist_B = np.mean(color_histograms[category]["B"], axis=0)
+
+    plt.plot(avg_hist_R, color='r', label=f"{category} - Red", alpha=0.6)
+    plt.plot(avg_hist_G, color='g', label=f"{category} - Green", alpha=0.6)
+    plt.plot(avg_hist_B, color='b', label=f"{category} - Blue", alpha=0.6)
+
+plt.xlabel("像素值 (0-255)")
+plt.ylabel("归一化频率")
+plt.title("不同类别的颜色直方图")
+plt.legend()
+plt.show()
