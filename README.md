@@ -8,6 +8,7 @@ Alzheimer's Disease is a prevalent neurodegenerative disorder affecting memory a
 Detailed data is available from the following sources:
 - [OASIS Neuroimaging Dataset](https://www.kaggle.com/datasets/ninadaithal/imagesoasis)
 - [Alzheimer's MRI 4-class Dataset](https://www.kaggle.com/datasets/marcopinamonti/alzheimer-mri-4-classes-dataset)
+
 Download the datasets from the provided links and place the files in the appropriate directory. The data loading and preprocessing procedures are implemented in the dataset_adni.py file.
 
 ## Repository Structure
